@@ -65,3 +65,39 @@ def fully_connected_layer(input_features, output_features, dropout=True):
         layers.append(nn.Dropout(fully_connected_dropout))
 
     return nn.Sequential(*layers)
+
+# Used to get the flattened size after going through convolutional layers
+def get_flattened_size(convolutional_layers):
+    dummy = torch.zeros(1, 3, 32, 32)  
+    conv_output = convolutional_layers(dummy)
+    flattened_size = conv_output.view(1, -1).size(1)
+
+    return flattened_size
+
+# Data variables
+image_size = 32
+RGB_channels = 3
+image_classes = 10
+
+# Convolutional neural network class
+class CNN(nn.Module):
+    def __init__(self):
+        super(CNN, self).__init__()
+
+        self.convolutional_layers = nn.Sequential(
+            convolutional_layer(input_channels=RGB_channels, output_channels=32),
+            convolutional_layer(input_channels=32, output_channels=64),
+        )
+
+        flattened_size = get_flattened_size(self.convolutional_layers)
+
+        self.fully_connected_layers = nn.Sequential(
+            nn.Flatten(),
+            fully_connected_layer(flattened_size, 128),
+            nn.Linear(128, image_classes)
+        )
+
+    def forward(self, x):
+        x = self.convolutional_layers(x)
+        x = self.fully_connected_layers(x)
+        return x
