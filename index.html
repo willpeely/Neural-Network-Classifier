@@ -1,417 +1,347 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>CNN Classification Model</title>
-  <link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="A PyTorch convolutional neural network for CIFAR-10 image classification.">
+    <title>CIFAR-10 CNN Classifier</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
 </head>
 
-
 <body>
-  <main>
+    <header class="site-header">
+        <nav class="nav container">
+            <a class="brand" href="#top">CNN Classifier</a>
 
-    <header>
-    <h1>CNN Image Classification Model</h1>
+            <div class="nav-links">
+                <a href="#overview">Overview</a>
+                <a href="#architecture">Architecture</a>
+                <a href="#training">Training</a>
+                <a href="#source">Source</a>
+            </div>
+        </nav>
     </header>
 
-    <div class="links">
-      <a href="CNN.py" class="code-link">CNN.py</a>
-      <a href="train.py" class="code-link">train.py</a>
-      <a href="test.py" class="code-link">test.py</a>
-      <a href="model.pth" class="code-link">model.pth</a>
-    </div>
-
-    <div class="results">
-      <h2>Results</h2>
-      <p>Training Accuracy - 82.10%</p>
-      <p>Test Accuracy - 87.21%</p>
-
-    <section class="code-section">
-
-      <div class="code-header">
-        <h2>CNN.py</h2>
-        <p>This CNN model is designed for image classification tasks. It consists of multiple convolutional layers followed by fully connected layers. The model uses ReLU activation functions, batch normalization, max pooling, and dropout for regularization.</p>
-      </div>
-
-      <div class="collapsible-container">
-        <button class="collapsible">Click to Expand/Collapse Code</button>
-      <div class="code-block">
-        <pre><code>
-import torch
-import torch.nn as nn
-import torch.optim as optim
-import torchvision.transforms as tranforms
-from torch.utils.data import DataLoader
-import time
-
-# Setting the variables for convolutional layers
-convolutional_kernel_size = 3    
-convolutional_stride = 1
-convolutional_padding = 1
-convolutional_activation = nn.ReLU()
-convolutional_pool = nn.MaxPool2d(kernel_size=2, stride=2)
-
-# Used to create a convolutional layer with defined input and output channels
-def convolutional_layer(input_channels, output_channels, pool=True, dropout=0):
-    """ Returns a convolutional layer.
-
-    Args:
-        input_channels (int): The number of inputs into the layer.
-        output_channels (int): The number of outputs the layer produces.
-        pool (bool, optional): If True the convolutional layer will use pooling. 
-        Defaults to True.
-    """
-    layers = [
-        nn.Conv2d(
-            in_channels=input_channels, 
-            out_channels=output_channels,
-            kernel_size=convolutional_kernel_size,
-            stride=convolutional_stride,
-            padding=convolutional_padding
-        ),
-
-        nn.BatchNorm2d(
-            num_features=output_channels
-        ),
-
-        convolutional_activation
-    ]
-    if pool:
-        layers.append(convolutional_pool)
-    if dropout > 0:
-        layers.append(nn.Dropout2d(dropout))
-
-    return nn.Sequential(*layers)
-
-# fully connected variables
-fully_connected_activation = nn.ReLU()
-fully_connected_dropout = nn.Dropout(0.5)
-
-# Used to create a fully connected layer with defined input and output features
-def fully_connected_layer(input_features, output_features, dropout=True):
-    """ Returns a fully connected layer.
-
-    Args:
-        input_features (int): The number of inputs into the layer.
-        output_features (int): The number of outputs produced by the layer.
-        dropout (bool, optional): If true the fully connected layer will use dropout. 
-        Defaults to True.
-    """
-    layers = [
-        nn.Linear(
-            in_features=input_features, 
-            out_features=output_features
-        ),
-        fully_connected_activation
-    ]
-    if dropout:
-        layers.append(fully_connected_dropout)
-
-    return nn.Sequential(*layers)
-
-# Used to get the flattened size after going through convolutional layers
-def get_flattened_size(convolutional_layers):
-    dummy = torch.zeros(1, 3, 32, 32)  
-    conv_output = convolutional_layers(dummy)
-    flattened_size = conv_output.view(1, -1).size(1)
-
-    return flattened_size
-
-# Data variables
-image_size = 32
-RGB_channels = 3
-image_classes = 10
-
-# Convolutional neural network class
-class CNN(nn.Module):
-    def __init__(self):
-        super(CNN, self).__init__()
-
-        self.convolutional_layers = nn.Sequential(
-
-            convolutional_layer(
-              input_channels=RGB_channels, 
-              output_channels=32, 
-              pool=False, 
-              dropout=0
-              ),
-
-            convolutional_layer(
-              input_channels=32, 
-              output_channels=64, 
-              pool=True, 
-              dropout=0
-              ),
-
-            convolutional_layer(
-              input_channels=64, 
-              output_channels=128, 
-              pool=True, 
-              dropout=0.1
-              ),
-
-            convolutional_layer(
-              input_channels=128, 
-              output_channels=256, 
-              pool=True, 
-              dropout=0.3
-              ),
-
-            convolutional_layer(
-              input_channels=256, 
-              output_channels=512, 
-              pool=True, 
-              dropout=0.5
-              )
-        )
-
-        flattened_size = get_flattened_size(self.convolutional_layers)
-
-        self.fully_connected_layers = nn.Sequential(
-            nn.Flatten(),
-
-            fully_connected_layer(
-              input_features=flattened_size, 
-              output_features=256, 
-              dropout=True
-              ),
-
-            fully_connected_layer(
-              input_features=256, 
-              output_features=128, 
-              dropout=True
-              ),
-
-            nn.Linear(128, image_classes)
-        )
-
-    def forward(self, x):
-        x = self.convolutional_layers(x)
-        x = self.fully_connected_layers(x)
-        return x
-        </code></pre>
-      </div>
-    </section>
-
-    <section class="code-section">
-
-      <div class="code-header">
-        <h2>train.py</h2>
-        <p>This script is used to train the CNN model defined in CNN.py. It includes data loading, preprocessing, model training, validation, and saving the trained model.</p>
-      </div>
-
-      <div class="collapsible-container">
-        <button class="collapsible">Click to Expand/Collapse Code</button>
-      <div class="code-block">
-        <pre><code>
-import torch
-import torch.nn as nn
-import torch.optim as optim
-import torch.optim.lr_scheduler as scheduler
-import torchvision
-import torchvision.transforms as transforms
-from torch.utils.data import DataLoader, random_split
-from CNN import CNN
-import time
-
-# Configuration variables
-device = torch.device("cpu")
-batch_size = 128
-epochs = 70
-model_path = "model.pth"
-
-# Defining the training transform
-train_transform = transforms.Compose([
-    transforms.ColorJitter(0.2,0.2,0.2,0.1),    #Adding colour augmentation
-    transforms.RandomRotation(10),  # Adding random rotation
-    transforms.RandomHorizontalFlip(),  # Adding random horiziontal flip
-    transforms.RandomCrop(32, padding=4),   # Adding random crop
-    transforms.ToTensor(),
-    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-])
-
-val_transform = transforms.Compose([
-    transforms.ToTensor(),
-    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-])
-
-full_dataset = torchvision.datasets.CIFAR10(root='./data', train=True, download=True)
-
-val_size = int(0.1 * len(full_dataset))
-train_size = len(full_dataset) - val_size
-train_dataset, val_dataset = random_split(full_dataset, [train_size, val_size])
-
-train_dataset.dataset = torchvision.datasets.CIFAR10(
-  root='./data', 
-  train=True, 
-  transform=train_transform
-  )
-
-val_dataset.dataset = torchvision.datasets.CIFAR10(
-  root='./data', 
-  train=True, 
-  transform=val_transform
-  )
-
-train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
-val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=4)
-
-# Initializing our model
-model = CNN().to(device)
-
-# Defining our loss function
-loss_function = nn.CrossEntropyLoss()
-
-# Defining our optimizer function
-optimizer_function = optim.Adam(model.parameters(), lr=0.001, weight_decay=0.0001)
-#optimizer_function = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.9, weight_decay=5e-4)
-
-# Defining our schedular function
-#scheduler_function = scheduler.StepLR(step_size=30, gamma=0.1, optimizer=optimizer_function)
-
-scheduler_function = scheduler.ReduceLROnPlateau(
-    optimizer=optimizer_function,
-    mode='max',              
-    factor=0.1,              
-    patience=4,             
-    threshold=0.002,        # minimum change to qualify as improvement
-    cooldown=0,              
-    min_lr=1e-6,            
-)
-
-def evaluate(loader):
-    model.eval()
-    correct = total = 0
-    with torch.no_grad():
-        for images, labels in loader:
-            images, labels = images.to(device), labels.to(device)
-            outputs = model(images)
-            _, predicted = torch.max(outputs.data, 1)
-            total += labels.size(0)
-            correct += (predicted == labels).sum().item()
-    model.train()
-    return 100 * correct / total
-
-
-# Used to train the data
-def train():
-    training_time = time.time()
-    for epoch in range(epochs): # Iterate through each epoch
-
-        start_time = time.time()    # Used to keep track of time
-
-        # Used to calculate epoch accuracy
-        total = 0
-        correct = 0
-
-        total_loss = 0.0    # Used to keep track of the loss for the epoch
-
-        for images, labels in train_loader: # Iterate through each image and corresponding label
-
-            images, labels = images.to(device), labels.to(device)
-
-            optimizer_function.zero_grad()  # Zero the gradient of the optimizer function
-
-            outputs = model(images) # Get the outputs caluclated 
-
-            loss = loss_function(outputs, labels)   # Caluclate the loss of the epoch
-
-            loss.backward() #Backpropagate 
-
-            optimizer_function.step()   # Update the weights 
-
-            total_loss += loss.item()   # Add to the total loss
-
-            # To compute the accuracy at each epoch
-            _, predicted = torch.max(outputs.data, 1)
-            total += labels.size(0)
-            correct += (predicted == labels).sum().item()
-        
-        accuracy = correct / total * 100
-        epoch_time = time.time() - start_time
-        val_accuracy = evaluate(val_loader)
-
-        print(f"Epoch - {epoch+1}/{epochs}\nLoss - {total_loss/len(train_loader):.6f}\n"
-              f"Accuracy - {accuracy:.2f}%\n"
-              f"Validation Accuracy - {val_accuracy:.2f}%\n"
-              f"Time - {epoch_time:.2f}s\n")
-
-        scheduler_function.step(val_accuracy)   # Step the schedular function
-
-    total_time = time.time() - training_time
-    print(f"Training Time: {total_time/60:.2f}m")
-
-if __name__ == "__main__":
-    train() 
-    torch.save(model.state_dict(), model_path)
-
-        </code></pre>
-      </div>
-    </section>
-
-    <section class="code-section">
-
-      <div class="code-header">
-        <h2>test.py</h2>
-        <p>This test script is used to see how good the model is at classifying images from unseen data, a result higher than the training accuracy means the model slighty overfit the training data</p>
-      </div>
-      
-      <div class="collapsible-container">
-        <button class="collapsible">Click to Expand/Collapse Code</button>
-      <div class="code-block">
-        <pre><code>
-import torch
-import torchvision
-import torchvision.transforms as transforms
-from CNN import CNN
-
-device = torch.device("cpu")
-
-transform = transforms.Compose([
-    transforms.ToTensor(),
-    transforms.Normalize((0.5,), (0.5,))
-])
-
-# Getting the CIFAR10 dataset
-test_dataset = torchvision.datasets.CIFAR10(
-  root='./data', 
-  train=False, 
-  download=True, 
-  transform=transform
-  )
-
-test_loader = torch.utils.data.DataLoader(
-  test_dataset, 
-  batch_size=64, 
-  shuffle=False
-  )
-
-model = CNN()
-
-# Load trained model weights
-model.load_state_dict(torch.load("model.pth"))
-model.eval()
-
-# Evaluating the model on the test data
-correct = 0
-total = 0
-
-with torch.no_grad():
-    for images, labels in test_loader:
-        images, labels = images.to(device), labels.to(device)
-        outputs = model(images)
-        _, predicted = torch.max(outputs.data, 1)
-        total += labels.size(0)
-        correct += (predicted == labels).sum().item()
-
-test_accuracy = 100 * correct / total
-print(f"Test Accuracy - {test_accuracy:.2f}%")
-        </code></pre>
-      </div>
-    </section>
-
-  </main>
+    <main id="top">
+        <section class="hero">
+            <div class="container hero-grid">
+                <div class="hero-copy">
+                    <p class="eyebrow">PyTorch · Computer Vision · CIFAR-10</p>
+
+                    <h1>
+                        Convolutional neural network
+                        <span>image classifier.</span>
+                    </h1>
+
+                    <p class="hero-intro">
+                        A custom CNN built with PyTorch to classify images from the
+                        CIFAR-10 dataset, using data augmentation, batch normalisation,
+                        dropout and adaptive learning-rate scheduling to improve
+                        generalisation.
+                    </p>
+
+                    <div class="hero-actions">
+                        <a class="button button-primary" href="#source">View source</a>
+                        <a class="button button-secondary" href="#architecture">Explore architecture</a>
+                    </div>
+
+                    <div class="tag-list">
+                        <span>Python</span>
+                        <span>PyTorch</span>
+                        <span>Torchvision</span>
+                        <span>CNN</span>
+                        <span>Deep Learning</span>
+                    </div>
+                </div>
+
+                <aside class="results-panel">
+                    <div class="result-main">
+                        <span>Test Accuracy</span>
+                        <strong>87.21%</strong>
+                        <small>CIFAR-10 test set</small>
+                    </div>
+
+                    <div class="result-grid">
+                        <div>
+                            <span>Training</span>
+                            <strong>82.10%</strong>
+                        </div>
+
+                        <div>
+                            <span>Classes</span>
+                            <strong>10</strong>
+                        </div>
+                    </div>
+
+                    <div class="result-meta">
+                        <span>32×32 RGB</span>
+                        <span>70 epochs</span>
+                        <span>Batch 128</span>
+                    </div>
+                </aside>
+            </div>
+        </section>
+
+        <section class="section" id="overview">
+            <div class="container">
+                <header class="section-heading">
+                    <p class="eyebrow">Project overview</p>
+                    <h2>End-to-end image classification pipeline</h2>
+                    <p>
+                        The project covers model architecture design, CIFAR-10 data
+                        preparation, data augmentation, training, validation,
+                        learning-rate scheduling and final evaluation on unseen data.
+                    </p>
+                </header>
+
+                <div class="feature-grid">
+                    <article class="card feature-card">
+                        <span class="card-number">01</span>
+                        <h3>Custom CNN</h3>
+                        <p>
+                            Five convolutional blocks progressively increase feature
+                            depth from 32 to 512 channels before classification through
+                            fully connected layers.
+                        </p>
+                    </article>
+
+                    <article class="card feature-card">
+                        <span class="card-number">02</span>
+                        <h3>Regularisation</h3>
+                        <p>
+                            Batch normalisation, dropout, weight decay and data
+                            augmentation are used throughout the training pipeline to
+                            improve generalisation.
+                        </p>
+                    </article>
+
+                    <article class="card feature-card">
+                        <span class="card-number">03</span>
+                        <h3>Adaptive Learning</h3>
+                        <p>
+                            Adam optimisation is combined with ReduceLROnPlateau so the
+                            learning rate decreases when validation accuracy stops
+                            improving.
+                        </p>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <section class="section architecture-section" id="architecture">
+            <div class="container">
+                <header class="section-heading light-heading">
+                    <p class="eyebrow">Architecture</p>
+                    <h2>Progressively deeper feature extraction</h2>
+                    <p>
+                        The model increases channel depth while reducing spatial
+                        dimensions through max pooling before mapping learned features
+                        onto the ten CIFAR-10 classes.
+                    </p>
+                </header>
+
+                <div class="architecture-flow">
+                    <div class="architecture-node">
+                        <small>Input</small>
+                        <strong>3</strong>
+                        <span>32×32 RGB</span>
+                    </div>
+
+                    <span class="arrow">→</span>
+
+                    <div class="architecture-node">
+                        <small>Conv</small>
+                        <strong>32</strong>
+                        <span>channels</span>
+                    </div>
+
+                    <span class="arrow">→</span>
+
+                    <div class="architecture-node">
+                        <small>Conv</small>
+                        <strong>64</strong>
+                        <span>channels</span>
+                    </div>
+
+                    <span class="arrow">→</span>
+
+                    <div class="architecture-node">
+                        <small>Conv</small>
+                        <strong>128</strong>
+                        <span>channels</span>
+                    </div>
+
+                    <span class="arrow">→</span>
+
+                    <div class="architecture-node">
+                        <small>Conv</small>
+                        <strong>256</strong>
+                        <span>channels</span>
+                    </div>
+
+                    <span class="arrow">→</span>
+
+                    <div class="architecture-node">
+                        <small>Conv</small>
+                        <strong>512</strong>
+                        <span>channels</span>
+                    </div>
+                </div>
+
+                <div class="classifier-flow">
+                    <span>Flatten</span>
+                    <span>256</span>
+                    <span>128</span>
+                    <span>10 Classes</span>
+                </div>
+            </div>
+        </section>
+
+        <section class="section" id="training">
+            <div class="container training-layout">
+                <div>
+                    <header class="section-heading compact">
+                        <p class="eyebrow">Training</p>
+                        <h2>Built to generalise</h2>
+                    </header>
+
+                    <div class="training-points">
+                        <article>
+                            <h3>Data augmentation</h3>
+                            <p>
+                                Colour jitter, random rotation, horizontal flipping and
+                                random crops increase the variation seen during training.
+                            </p>
+                        </article>
+
+                        <article>
+                            <h3>Optimisation</h3>
+                            <p>
+                                Adam is used with a learning rate of 0.001 and weight
+                                decay of 0.0001, alongside cross-entropy loss.
+                            </p>
+                        </article>
+
+                        <article>
+                            <h3>Validation feedback</h3>
+                            <p>
+                                A 90/10 training-validation split is evaluated every
+                                epoch, with validation accuracy driving the adaptive
+                                learning-rate scheduler.
+                            </p>
+                        </article>
+                    </div>
+                </div>
+
+                <aside class="config-card">
+                    <div>
+                        <span>Epochs</span>
+                        <strong>70</strong>
+                    </div>
+                    <div>
+                        <span>Batch Size</span>
+                        <strong>128</strong>
+                    </div>
+                    <div>
+                        <span>Loss</span>
+                        <strong>CrossEntropy</strong>
+                    </div>
+                    <div>
+                        <span>Optimiser</span>
+                        <strong>Adam</strong>
+                    </div>
+                    <div>
+                        <span>Scheduler</span>
+                        <strong>ReduceLROnPlateau</strong>
+                    </div>
+                    <div>
+                        <span>Device</span>
+                        <strong>CPU</strong>
+                    </div>
+                </aside>
+            </div>
+        </section>
+
+        <section class="section source-section" id="source">
+            <div class="container">
+                <header class="section-heading">
+                    <p class="eyebrow">Source code</p>
+                    <h2>Explore the implementation</h2>
+                    <p>
+                        The project is split into separate model, training and
+                        evaluation scripts, with trained weights stored in
+                        <code>model.pth</code>.
+                    </p>
+                </header>
+
+                <div class="source-grid">
+                    <a class="source-card" href="code/CNN.py">
+                        <div class="source-icon">PY</div>
+                        <div>
+                            <h3>CNN.py</h3>
+                            <p>Model architecture and reusable network blocks.</p>
+                        </div>
+                        <span class="source-arrow">↗</span>
+                    </a>
+
+                    <a class="source-card" href="code/train.py">
+                        <div class="source-icon">PY</div>
+                        <div>
+                            <h3>train.py</h3>
+                            <p>Data loading, augmentation, training and validation.</p>
+                        </div>
+                        <span class="source-arrow">↗</span>
+                    </a>
+
+                    <a class="source-card" href="code/test.py">
+                        <div class="source-icon">PY</div>
+                        <div>
+                            <h3>test.py</h3>
+                            <p>Evaluation against the unseen CIFAR-10 test set.</p>
+                        </div>
+                        <span class="source-arrow">↗</span>
+                    </a>
+
+                    <a class="source-card" href="model.pth">
+                        <div class="source-icon weights">PT</div>
+                        <div>
+                            <h3>model.pth</h3>
+                            <p>Saved weights from the trained neural network.</p>
+                        </div>
+                        <span class="source-arrow">↓</span>
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <section class="section final-result-section">
+            <div class="container result-banner">
+                <div>
+                    <p class="eyebrow">Final result</p>
+                    <h2>87.21% test accuracy</h2>
+                    <p>
+                        The trained model was evaluated against unseen CIFAR-10 test
+                        data after completing the training and validation pipeline.
+                    </p>
+                </div>
+
+                <div class="accuracy-ring">
+                    <strong>87.21%</strong>
+                    <span>Test Accuracy</span>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container footer-content">
+            <span>CIFAR-10 CNN Classifier</span>
+            <a href="#top">Back to top ↑</a>
+        </div>
+    </footer>
 </body>
-
-<script src="script.js"></script>
 </html>
